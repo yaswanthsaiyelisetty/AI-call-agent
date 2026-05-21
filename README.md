@@ -1,6 +1,6 @@
 # 📞 Yaswanth's AI Call Assistant
 
-An AI-powered phone secretary that answers incoming Twilio calls in **Telugu (Manglish)**, conducts a natural conversation using **Google Gemini 1.5 Flash**, collects caller details, and instantly sends a structured summary to your **WhatsApp**.
+An AI-powered phone secretary that answers incoming Twilio calls in **Telugu (Manglish)**, conducts a natural conversation using **Google Gemini 2.5 Flash**, collects caller details, and instantly sends a structured summary to your **WhatsApp**.
 
 ## Architecture
 
@@ -38,7 +38,15 @@ copy .env.example .env
 # Edit .env with your actual credentials
 ```
 
-### 3. Run the server
+### 3. Twilio WhatsApp Sandbox Opt-In (IMPORTANT)
+
+Before you can receive WhatsApp messages, you must authorize the Twilio Sandbox:
+1. Open WhatsApp on your phone.
+2. Send a message to **+1 415 523 8886** (or your Twilio Sandbox number).
+3. The message must be your join code found in the Twilio Console (e.g., `join hungry-elephant`).
+4. Wait for the confirmation reply from Twilio.
+
+### 4. Run the server
 
 ```bash
 python main.py
@@ -46,7 +54,7 @@ python main.py
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 4. Expose to Twilio
+### 5. Expose to Twilio
 
 Use [ngrok](https://ngrok.com) to tunnel your local server:
 
@@ -54,9 +62,9 @@ Use [ngrok](https://ngrok.com) to tunnel your local server:
 ngrok http 8000
 ```
 
-Copy the `https://xxxx.ngrok.io` URL and set it in your Twilio phone number config:
-- **Voice webhook**: `https://xxxx.ngrok.io/voice` (HTTP POST)
-- **Status callback** (optional): `https://xxxx.ngrok.io/status` (HTTP POST)
+Copy the `https://xxxx.ngrok.dev` URL and set it in your Twilio phone number config:
+- **Voice webhook**: `https://xxxx.ngrok.dev/voice` (HTTP POST)
+- **Status callback** (optional): `https://xxxx.ngrok.dev/status` (HTTP POST)
 
 ## Environment Variables
 
@@ -80,7 +88,7 @@ Copy the `https://xxxx.ngrok.io` URL and set it in your Twilio phone number conf
 ## How It Works
 
 1. **Call arrives** → Twilio POSTs to `/voice` with `CallSid` and `From`.
-2. **Greeting** → TwiML responds with a Telugu greeting inside a `<Gather>` block (speech input, te-IN language model).
-3. **Conversation loop** → Each speech segment POSTs to `/respond`. Gemini generates a context-aware Telugu reply. Loop continues via nested `<Gather>` blocks.
+2. **Greeting** → TwiML responds with a Telugu greeting using the `Polly.Aditi` Indian English voice (ideal for Manglish). Twilio listens via a `<Gather>` block (te-IN ASR model) configured with robust timeouts to prevent cutting callers off.
+3. **Conversation loop** → Each speech segment POSTs to `/respond`. Gemini generates a context-aware Telugu reply. If the caller is silent, the system seamlessly redirects to prevent the call from dropping abruptly.
 4. **Completion** → When Gemini's reply contains terminal phrases (e.g., "note cheskunnanu"), the server returns `<Say>` + `<Hangup/>`.
 5. **WhatsApp summary** → A background thread asks Gemini to distill the transcript into Caller Name / Purpose / Appointment Details, then sends it via Twilio WhatsApp API.
